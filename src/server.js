@@ -2,6 +2,7 @@ import { createServer as createHttpServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { assignName } from './names.js';
 
@@ -71,6 +72,9 @@ export function createServer() {
   const identityMap = new Map();
   // connectionCount: Map<ip, number> — enforces max 300 connections per IP
   const connectionCount = new Map();
+  // nameTokens: Map<name, token> — proves ownership for claim validation.
+  // Entry created on join, deleted on cleanup.
+  const nameTokens = new Map();
 
   const httpServer = createHttpServer((req, res) => {
     // Path traversal guard: reject any path containing '..'
@@ -147,12 +151,14 @@ export function createServer() {
    * - Remove from room; delete empty rooms
    * - Broadcast departure to remaining peers
    * - Decrement per-IP connection counter
+   * Note: nameTokens entry is NOT deleted on disconnect so the token can be used for claim()
    */
   function cleanup(ws) {
     const entry = identityMap.get(ws);
     if (!entry) return; // already cleaned up (idempotent)
     const { name, roomId, ip } = entry;
     identityMap.delete(ws);
+    // NOTE: do NOT delete nameTokens[name] — it's needed for claim validation
 
     const room = rooms.get(roomId);
     if (room) {
@@ -175,7 +181,6 @@ export function createServer() {
     const flyIp = req.headers['fly-client-ip'];
     const ip = flyIp ?? req.socket.remoteAddress ?? 'unknown';
     const room = roomKey(ip);
-    console.log(`[connect] ip=${ip} room=${room} fly-client-ip=${flyIp ?? 'none'} remoteAddress=${req.socket.remoteAddress}`);
 
     // Enforce max 300 connections per room (a full train car on shared WiFi)
     const count = connectionCount.get(room) ?? 0;
@@ -209,13 +214,15 @@ export function createServer() {
 
     const name = assignName(getRoomNames(roomId));
     identityMap.set(ws, { name, roomId, ip });
+    const token = randomBytes(16).toString('hex');
+    nameTokens.set(name, token);
     roomSet.add(ws);
 
     // Notify existing peers that someone joined
     broadcast(roomId, { type: 'joined', name, roomSize: roomSet.size }, ws);
 
-    // Send join confirmation to the new peer (their own name + current room size)
-    ws.send(JSON.stringify({ type: 'joined', name, roomSize: roomSet.size }));
+    // Send join confirmation to the new peer (their own name + token + current room size)
+    ws.send(JSON.stringify({ type: 'joined', name, token, roomSize: roomSet.size }));
 
     ws.on('message', (data) => {
       let msg;
@@ -224,6 +231,41 @@ export function createServer() {
       } catch {
         // Malformed JSON — terminate immediately
         ws.terminate();
+        return;
+      }
+
+      if (msg.type === 'claim') {
+        const { name: claimedName, token: claimedToken } = msg;
+        // Validate format — must match Adjective Animal pattern
+        if (typeof claimedName !== 'string' || !/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(claimedName)) return;
+        if (typeof claimedToken !== 'string' || claimedToken.length !== 32) return;
+        // Token must match what was issued for this name
+        if (nameTokens.get(claimedName) !== claimedToken) return;
+        // Name must be free (original owner must have disconnected)
+        if (getRoomNames(roomId).has(claimedName)) return;
+
+        const entry = identityMap.get(ws);
+        const oldName = entry.name;
+
+        // Delete old token, issue new one for claimed name
+        nameTokens.delete(oldName);
+        const newToken = randomBytes(16).toString('hex');
+        nameTokens.set(claimedName, newToken);
+
+        // Update identity
+        identityMap.set(ws, { ...entry, name: claimedName });
+
+        // Broadcast rename to peers
+        const roomSet = rooms.get(roomId);
+        broadcast(roomId, { type: 'renamed', from: oldName, to: claimedName }, ws);
+
+        // Confirm to claimer with new token
+        ws.send(JSON.stringify({
+          type: 'joined',
+          name: claimedName,
+          token: newToken,
+          roomSize: roomSet?.size ?? 1,
+        }));
         return;
       }
 

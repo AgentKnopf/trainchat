@@ -12,6 +12,12 @@ const ws = new WebSocket(`${proto}://${location.host}`);
 
 ws.addEventListener('open', () => {
   addSystem('Connected — waiting for room info…');
+  try {
+    const saved = JSON.parse(sessionStorage.getItem('trainchat-name') ?? 'null');
+    if (saved?.name && saved?.token) {
+      ws.send(JSON.stringify({ type: 'claim', name: saved.name, token: saved.token }));
+    }
+  } catch { /* corrupt sessionStorage — ignore */ }
 });
 
 ws.addEventListener('close', () => {
@@ -28,16 +34,30 @@ ws.addEventListener('message', (event) => {
   try { msg = JSON.parse(event.data); } catch { return; }
 
   if (msg.type === 'joined' && !myName) {
-    // Our own join confirmation
+    // Own join confirmation (initial or after claim)
     myName = msg.name;
     myNameEl.textContent = msg.name;
     updateRoomSize(msg.roomSize);
     setEnabled(true);
     addSystem(`You joined as ${msg.name}`);
+    if (msg.token) {
+      sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
+    }
+    return;
+  }
+
+  if (msg.type === 'joined' && myName && msg.token) {
+    // Claim succeeded — server confirmed our name with a fresh token
+    myName = msg.name;
+    myNameEl.textContent = msg.name;
+    updateRoomSize(msg.roomSize);
+    addSystem(`You rejoined as ${msg.name}`);
+    sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
     return;
   }
 
   if (msg.type === 'joined') {
+    // Peer joined the room
     updateRoomSize(msg.roomSize);
     addSystem(`${msg.name} joined`);
     return;
@@ -46,6 +66,11 @@ ws.addEventListener('message', (event) => {
   if (msg.type === 'left') {
     updateRoomSize(msg.roomSize);
     addSystem(`${msg.name} left`);
+    return;
+  }
+
+  if (msg.type === 'renamed') {
+    addSystem(`${msg.from} is now ${msg.to}`);
     return;
   }
 
