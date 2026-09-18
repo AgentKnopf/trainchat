@@ -14,6 +14,20 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
 ]);
 
+// Normalise an IP to a room key.
+// IPv6: truncate to /64 prefix (first 4 groups) so devices on the same WiFi
+// share a room despite IPv6 privacy addressing assigning each device a unique
+// interface identifier. IPv4 and IPv4-mapped addresses use the full address.
+function roomKey(ip) {
+  // Strip IPv4-mapped prefix (::ffff:1.2.3.4 → 1.2.3.4)
+  const addr = ip.replace(/^::ffff:/i, '');
+  // Pure IPv4 — use as-is
+  if (addr.includes('.')) return addr;
+  // IPv6 — keep only the first 4 groups (64-bit network prefix)
+  const groups = addr.split(':');
+  return groups.slice(0, 4).join(':');
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js':   'application/javascript; charset=utf-8',
@@ -160,10 +174,11 @@ export function createServer() {
     // Fall back to socket.remoteAddress for local/direct deployments.
     const flyIp = req.headers['fly-client-ip'];
     const ip = flyIp ?? req.socket.remoteAddress ?? 'unknown';
-    console.log(`[connect] ip=${ip} fly-client-ip=${flyIp ?? 'none'} remoteAddress=${req.socket.remoteAddress}`);
+    const room = roomKey(ip);
+    console.log(`[connect] ip=${ip} room=${room} fly-client-ip=${flyIp ?? 'none'} remoteAddress=${req.socket.remoteAddress}`);
 
-    // Enforce max 300 connections per IP (a full train car on shared WiFi)
-    const count = connectionCount.get(ip) ?? 0;
+    // Enforce max 300 connections per room (a full train car on shared WiFi)
+    const count = connectionCount.get(room) ?? 0;
     if (count >= 300) {
       ws.close(1008, 'Too many connections from your network');
       return;
@@ -171,9 +186,8 @@ export function createServer() {
 
     const rateLimiter = makeRateLimiter();
 
-    // Use IP as the room ID — everyone on the same network shares a room.
-    // This is intentional: TrainChat is designed for local WiFi proximity.
-    const roomId = ip;
+    // Use /64 subnet as room ID — everyone on the same WiFi shares a room.
+    const roomId = room;
 
     // Register close/error handlers BEFORE adding to any map,
     // so a race between connection and immediate close never leaks the socket.
@@ -188,20 +202,20 @@ export function createServer() {
     ws.on('error', onClose);
 
     // Now it's safe to register in maps
-    connectionCount.set(ip, count + 1);
+    connectionCount.set(roomId, count + 1);
 
     if (!rooms.has(roomId)) rooms.set(roomId, new Set());
-    const room = rooms.get(roomId);
+    const roomSet = rooms.get(roomId);
 
     const name = assignName(getRoomNames(roomId));
     identityMap.set(ws, { name, roomId, ip });
-    room.add(ws);
+    roomSet.add(ws);
 
     // Notify existing peers that someone joined
-    broadcast(roomId, { type: 'joined', name, roomSize: room.size }, ws);
+    broadcast(roomId, { type: 'joined', name, roomSize: roomSet.size }, ws);
 
     // Send join confirmation to the new peer (their own name + current room size)
-    ws.send(JSON.stringify({ type: 'joined', name, roomSize: room.size }));
+    ws.send(JSON.stringify({ type: 'joined', name, roomSize: roomSet.size }));
 
     ws.on('message', (data) => {
       let msg;
