@@ -51,7 +51,15 @@ ws.addEventListener('message', (event) => {
     myName = msg.name;
     myNameEl.textContent = msg.name;
     updateRoomSize(msg.roomSize);
+    addSystem(`You rejoined as ${msg.name}`);
     sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
+    return;
+  }
+
+  if (msg.type === 'joined') {
+    // Peer joined the room
+    updateRoomSize(msg.roomSize);
+    addSystem(`${msg.name} joined`);
     return;
   }
 
