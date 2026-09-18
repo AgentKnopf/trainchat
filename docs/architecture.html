@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>TrainChat — Architecture</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="architecture.css" />
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">TrainChat — Architecture</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#trainchat-architecture"
+id="toc-trainchat-architecture">TrainChat — Architecture</a>
+<ul>
+<li><a href="#table-of-contents" id="toc-table-of-contents">Table of
+Contents</a></li>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#system-components" id="toc-system-components">System
+Components</a>
+<ul>
+<li><a href="#server" id="toc-server">Server</a></li>
+<li><a href="#client" id="toc-client">Client</a></li>
+</ul></li>
+<li><a href="#data-flow" id="toc-data-flow">Data Flow</a>
+<ul>
+<li><a href="#connection-establishment"
+id="toc-connection-establishment">Connection Establishment</a></li>
+<li><a href="#message-relay" id="toc-message-relay">Message
+Relay</a></li>
+<li><a href="#disconnection"
+id="toc-disconnection">Disconnection</a></li>
+</ul></li>
+<li><a href="#room-assignment" id="toc-room-assignment">Room
+Assignment</a>
+<ul>
+<li><a href="#mechanism" id="toc-mechanism">Mechanism</a></li>
+<li><a href="#proxy-deployment" id="toc-proxy-deployment">Proxy
+Deployment</a></li>
+<li><a href="#cgnat-limitation" id="toc-cgnat-limitation">CGNAT
+Limitation</a></li>
+</ul></li>
+<li><a href="#identity-system" id="toc-identity-system">Identity
+System</a>
+<ul>
+<li><a href="#name-assignment" id="toc-name-assignment">Name
+Assignment</a></li>
+<li><a href="#binding" id="toc-binding">Binding</a></li>
+</ul></li>
+<li><a href="#message-lifecycle" id="toc-message-lifecycle">Message
+Lifecycle</a>
+<ul>
+<li><a href="#validation-pipeline-3-layers"
+id="toc-validation-pipeline-3-layers">Validation Pipeline (3
+layers)</a></li>
+<li><a href="#why-json.stringify-is-mandatory"
+id="toc-why-json.stringify-is-mandatory">Why JSON.stringify is
+mandatory</a></li>
+</ul></li>
+<li><a href="#security-architecture"
+id="toc-security-architecture">Security Architecture</a>
+<ul>
+<li><a href="#threat-model" id="toc-threat-model">Threat Model</a></li>
+<li><a href="#controls" id="toc-controls">Controls</a></li>
+</ul></li>
+<li><a href="#known-limitations" id="toc-known-limitations">Known
+Limitations</a></li>
+<li><a href="#deployment" id="toc-deployment">Deployment</a>
+<ul>
+<li><a href="#requirements" id="toc-requirements">Requirements</a></li>
+<li><a href="#process-supervision" id="toc-process-supervision">Process
+Supervision</a></li>
+<li><a href="#reverse-proxy-nginx-with-proxy-protocol"
+id="toc-reverse-proxy-nginx-with-proxy-protocol">Reverse Proxy (nginx
+with PROXY protocol)</a></li>
+<li><a href="#self-hosting-quick-start"
+id="toc-self-hosting-quick-start">Self-Hosting (Quick Start)</a></li>
+</ul></li>
+<li><a href="#future-roadmap" id="toc-future-roadmap">Future
+Roadmap</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="trainchat-architecture">TrainChat — Architecture</h1>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol type="1">
+<li><a href="#overview">Overview</a></li>
+<li><a href="#system-components">System Components</a></li>
+<li><a href="#data-flow">Data Flow</a></li>
+<li><a href="#room-assignment">Room Assignment</a></li>
+<li><a href="#identity-system">Identity System</a></li>
+<li><a href="#message-lifecycle">Message Lifecycle</a></li>
+<li><a href="#security-architecture">Security Architecture</a></li>
+<li><a href="#known-limitations">Known Limitations</a></li>
+<li><a href="#deployment">Deployment</a></li>
+<li><a href="#future-roadmap">Future Roadmap</a></li>
+</ol>
+<hr />
+<h2 id="overview">Overview</h2>
+<p>TrainChat is a zero-install, browser-based ephemeral chat for people
+on the same WiFi network. The architecture is intentionally minimal: a
+single Node.js process serves the static frontend and relays WebSocket
+messages in memory. There is no database, no user accounts, and no
+message persistence. The server’s only job is to relay messages between
+connected browsers on the same network — and then forget them.</p>
+<p><strong>Design constraints that shaped every decision:</strong></p>
+<ul>
+<li>Zero friction: no install, no account, open URL and you’re in</li>
+<li>Public-by-design: the room is the network, not a secret channel</li>
+<li>Auditable: the entire server fits in one file; anyone can read
+it</li>
+<li>Ephemeral: closing the tab is the end of your session, with no trace
+left</li>
+</ul>
+<hr />
+<h2 id="system-components">System Components</h2>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│                        Browser                          │
+│                                                         │
+│   ┌─────────────┐        ┌──────────────────────────┐  │
+│   │  index.html │        │       app.js (client)    │  │
+│   │  (static)   │        │  - WebSocket connection  │  │
+│   └─────────────┘        │  - textContent rendering │  │
+│                          │  - no localStorage/cookie│  │
+│                          └────────────┬─────────────┘  │
+└───────────────────────────────────────┼─────────────────┘
+                                        │ wss://
+                                        │ WebSocket (TLS)
+                              ┌─────────▼──────────┐
+                              │   Node.js Server   │
+                              │                    │
+                              │  ┌──────────────┐  │
+                              │  │  HTTP Server │  │
+                              │  │  (static +   │  │
+                              │  │   upgrade)   │  │
+                              │  └──────┬───────┘  │
+                              │         │           │
+                              │  ┌──────▼───────┐  │
+                              │  │  WebSocket   │  │
+                              │  │  Handler     │  │
+                              │  │  (ws lib)    │  │
+                              │  └──────┬───────┘  │
+                              │         │           │
+                              │  ┌──────▼───────┐  │
+                              │  │  Room        │  │
+                              │  │  Registry    │  │
+                              │  │  (in-memory) │  │
+                              │  └──────────────┘  │
+                              └────────────────────┘</code></pre>
+<h3 id="server">Server</h3>
+<p>A single Node.js process with two responsibilities:</p>
+<table>
+<thead>
+<tr class="header">
+<th>Responsibility</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Serve static assets</td>
+<td>Built-in <code>http</code> module — no Express</td>
+</tr>
+<tr class="even">
+<td>Relay WebSocket messages</td>
+<td><code>ws</code> library, <code>maxPayload: 1024</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Room Registry</strong> is a plain
+<code>Map&lt;roomId, Set&lt;WebSocket&gt;&gt;</code>. Room ID is derived
+from the client’s TCP-layer IP. There is no secondary storage. Process
+restart = all rooms gone.</p>
+<p><strong>Identity Map</strong> is a plain
+<code>Map&lt;WebSocket, string&gt;</code> binding each socket to its
+server-assigned name for the duration of the connection.</p>
+<h3 id="client">Client</h3>
+<p>A single HTML file with inline or co-located JS. No framework, no
+build step.</p>
+<ul>
+<li>Connects to <code>wss://trainchat.app</code> via the browser
+WebSocket API</li>
+<li>Renders all incoming content via <code>textContent</code> — never
+<code>innerHTML</code></li>
+<li>Holds no state beyond the current session’s messages in the DOM</li>
+<li>No cookies, no <code>localStorage</code>, no
+<code>sessionStorage</code></li>
+</ul>
+<hr />
+<h2 id="data-flow">Data Flow</h2>
+<h3 id="connection-establishment">Connection Establishment</h3>
+<pre><code>Browser                              Server
+   │                                    │
+   │──── TCP handshake ────────────────▶│
+   │◀─── TCP ACK ────────────────────── │
+   │                                    │
+   │──── HTTP GET /  ──────────────────▶│
+   │◀─── 200 OK (index.html) ─────────  │
+   │                                    │
+   │──── HTTP Upgrade: websocket ──────▶│  ← Origin header checked here
+   │     Origin: https://trainchat.app  │
+   │                                    │  ← socket.remoteAddress → roomId
+   │                                    │  ← random name assigned, bound to socket
+   │◀─── 101 Switching Protocols ──────  │
+   │                                    │
+   │◀─── { type:&quot;joined&quot;,              │
+   │       name:&quot;Crimson Penguin&quot;,      │
+   │       roomSize: N }               │</code></pre>
+<h3 id="message-relay">Message Relay</h3>
+<pre><code>Sender                    Server                   Room Peers
+  │                          │                         │
+  │─── { type:&quot;msg&quot;,         │                         │
+  │      text:&quot;Hello!&quot; } ──▶│                         │
+  │                          │  1. maxPayload check     │
+  │                          │     (ws layer, pre-parse)│
+  │                          │  2. JSON.parse()         │
+  │                          │  3. type === &quot;msg&quot; ?     │
+  │                          │  4. text: string?        │
+  │                          │     1-500 chars, trimmed │
+  │                          │  5. rate limit check     │
+  │                          │     (token bucket)       │
+  │                          │  6. Construct envelope:  │
+  │                          │     JSON.stringify({     │
+  │                          │       type: &quot;msg&quot;,       │
+  │                          │       from: &quot;Crimson     │
+  │                          │             Penguin&quot;,    │
+  │                          │       text: &quot;Hello!&quot;,   │
+  │                          │       ts: &lt;server time&gt; │
+  │                          │     })                   │
+  │◀─── broadcast ──────────│────────────────────────▶│</code></pre>
+<h3 id="disconnection">Disconnection</h3>
+<pre><code>Browser                              Server
+   │                                    │
+   │──── TCP FIN ──────────────────────▶│
+   │                                    │  ← close/error/terminate handler fires
+   │                                    │  ← socket removed from room Set
+   │                                    │  ← per-IP connection counter decremented
+   │                                    │  ← if room is now empty: room deleted from Map
+   │                                    │  ← broadcast { type:&quot;left&quot;, name, roomSize }</code></pre>
+<hr />
+<h2 id="room-assignment">Room Assignment</h2>
+<h3 id="mechanism">Mechanism</h3>
+<p>Every connecting WebSocket’s room is determined by
+<code>socket.remoteAddress</code> — the TCP-layer IP address assigned by
+the operating system. This is the only source of truth for room
+assignment.</p>
+<pre><code>socket.remoteAddress  →  roomId  →  room membership
+&quot;203.0.113.42&quot;        →  &quot;203.0.113.42&quot;  →  Set&lt;WebSocket&gt;</code></pre>
+<p>All devices behind the same NAT gateway share one public IP egress,
+so they land in the same room automatically. This is the zero-friction
+mechanism: same WiFi = same public IP = same room, with no coordination
+required.</p>
+<h3 id="proxy-deployment">Proxy Deployment</h3>
+<p>When the server runs behind a reverse proxy (nginx, Caddy,
+Cloudflare), the proxy’s IP becomes <code>socket.remoteAddress</code> —
+everyone would land in one global room. The correct solution is the
+<strong>PROXY protocol</strong>, which carries the real client IP at the
+TCP layer before the HTTP handshake:</p>
+<pre class="nginx"><code># nginx config — PROXY protocol passthrough
+stream {
+  server {
+    listen 443 ssl;
+    proxy_pass backend;
+    proxy_protocol on;
+  }
+}</code></pre>
+<p>The Node.js server then reads the real client IP from the PROXY
+protocol header, not from HTTP headers.</p>
+<p><strong>What is never trusted:</strong> <code>X-Forwarded-For</code>,
+<code>X-Real-IP</code>, and all other HTTP-layer IP headers. These are
+fully client-controllable and are ignored entirely.</p>
+<h3 id="cgnat-limitation">CGNAT Limitation</h3>
+<p>“Same public IP” does not guarantee physical proximity on all network
+types:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Network type</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Home/office WiFi</td>
+<td>✅ Same IP = same building</td>
+</tr>
+<tr class="even">
+<td>Train/cafe WiFi</td>
+<td>✅ Same IP = same location</td>
+</tr>
+<tr class="odd">
+<td>Mobile carrier (CGNAT)</td>
+<td>⚠️ Same IP = potentially thousands of users across a region</td>
+</tr>
+<tr class="even">
+<td>Corporate VPN</td>
+<td>⚠️ Same IP = all employees on that VPN exit node</td>
+</tr>
+</tbody>
+</table>
+<p>This is disclosed in the UI info box on every page load. It is a
+known design constraint, not a security vulnerability.</p>
+<hr />
+<h2 id="identity-system">Identity System</h2>
+<h3 id="name-assignment">Name Assignment</h3>
+<p>On connection, the server selects a random name from a pool of ~2,500
+combinations:</p>
+<pre><code>adjectives: [&quot;Amber&quot;, &quot;Blazing&quot;, &quot;Crimson&quot;, &quot;Drifting&quot;, ...]  (~50)
+animals:    [&quot;Badger&quot;, &quot;Crane&quot;, &quot;Falcon&quot;, &quot;Penguin&quot;, ...]      (~50)
+
+name = adjectives[random] + &quot; &quot; + animals[random]
+→ &quot;Crimson Penguin&quot;</code></pre>
+<p>If the chosen name is already active in the room, the server picks
+again until a unique name is found.</p>
+<h3 id="binding">Binding</h3>
+<pre><code>Map&lt;WebSocket, string&gt;
+
+ws_A  →  &quot;Crimson Penguin&quot;
+ws_B  →  &quot;Silver Falcon&quot;
+ws_C  →  &quot;Drifting Crane&quot;</code></pre>
+<p>The binding is created before the socket is added to any room and is
+removed only when the connection closes. <strong>The client never sends
+a <code>from</code> field.</strong> The server injects <code>from</code>
+into every broadcast envelope using its own map — the client’s payload
+is structurally incapable of affecting the sender identity in the
+relayed message.</p>
+<hr />
+<h2 id="message-lifecycle">Message Lifecycle</h2>
+<h3 id="validation-pipeline-3-layers">Validation Pipeline (3
+layers)</h3>
+<pre><code>Raw bytes from client
+        │
+        ▼
+┌───────────────────────────────┐
+│  Layer 1: ws maxPayload       │  enforced at WebSocket.Server constructor
+│  maxPayload: 1024 bytes       │  connection closed if exceeded
+│  (before any parsing)         │  cannot be bypassed post-parse
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│  Layer 2: JSON.parse()        │  malformed JSON → connection closed
+│                               │  result is a plain JS object
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│  Layer 3: Field validation    │
+│  - type === &quot;msg&quot;             │  unknown types dropped silently
+│  - typeof text === &quot;string&quot;   │
+│  - text.trim().length 1–500   │
+│  - rate limit check           │  token bucket, 5 msg/sec per socket
+└───────────────┬───────────────┘
+                │
+                ▼
+┌───────────────────────────────┐
+│  Envelope construction        │
+│  JSON.stringify({             │  NEVER string interpolation
+│    type: &quot;msg&quot;,               │
+│    from: identityMap.get(ws), │  server-assigned, not client-supplied
+│    text: validated.text,      │  re-serialized clean string
+│    ts: Date.now()             │  server timestamp
+│  })                           │
+└───────────────┬───────────────┘
+                │
+                ▼
+        Broadcast to room</code></pre>
+<h3 id="why-json.stringify-is-mandatory">Why JSON.stringify is
+mandatory</h3>
+<p>String interpolation for JSON construction is a common developer
+shortcut that introduces JSON injection:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode js"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">// WRONG — never do this</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> msg <span class="op">=</span> <span class="vs">`{&quot;from&quot;:&quot;</span><span class="sc">${</span>name<span class="sc">}</span><span class="vs">&quot;,&quot;text&quot;:&quot;</span><span class="sc">${</span>text<span class="sc">}</span><span class="vs">&quot;}`</span><span class="op">;</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co">// A text value of: hello&quot;,&quot;injected&quot;:&quot;field</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="co">// produces: {&quot;from&quot;:&quot;X&quot;,&quot;text&quot;:&quot;hello&quot;,&quot;injected&quot;:&quot;field&quot;}</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="co">// CORRECT — always</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a><span class="kw">const</span> msg <span class="op">=</span> <span class="bu">JSON</span><span class="op">.</span><span class="fu">stringify</span>({ <span class="dt">from</span><span class="op">:</span> name<span class="op">,</span> text })<span class="op">;</span></span></code></pre></div>
+<p>The spec mandates <code>JSON.stringify</code> at every outbound
+serialization point.</p>
+<hr />
+<h2 id="security-architecture">Security Architecture</h2>
+<h3 id="threat-model">Threat Model</h3>
+<p>TrainChat’s threat model is unusual: <strong>the room is
+intentionally public to the local network</strong>. The security goals
+are not to restrict who can join, but to:</p>
+<ol type="1">
+<li>Prevent one user from harming others in the room (XSS,
+impersonation)</li>
+<li>Prevent cross-site attacks from malicious third-party pages</li>
+<li>Prevent the server from being used as an amplifier or taken
+down</li>
+<li>Ensure the server holds no recoverable message data</li>
+</ol>
+<h3 id="controls">Controls</h3>
+<h4 id="xss-prevention">XSS Prevention</h4>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Layer</th>
+<th>Control</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Server</td>
+<td><code>text</code> validated as plain string, re-serialized via
+<code>JSON.stringify</code></td>
+</tr>
+<tr class="even">
+<td>Client</td>
+<td>All content rendered via <code>textContent</code> — never
+<code>innerHTML</code></td>
+</tr>
+<tr class="odd">
+<td>Transport</td>
+<td>Full Content-Security-Policy header (see below)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Content-Security-Policy:</strong></p>
+<pre><code>default-src &#39;self&#39;;
+script-src  &#39;self&#39;;
+style-src   &#39;self&#39;;
+connect-src &#39;self&#39; wss://trainchat.app;
+frame-ancestors &#39;none&#39;;
+form-action &#39;none&#39;;
+base-uri    &#39;none&#39;</code></pre>
+<ul>
+<li><code>frame-ancestors 'none'</code> — TrainChat cannot be embedded
+in an iframe (prevents clickjacking and silent network membership
+oracles)</li>
+<li><code>connect-src</code> — outbound WebSocket/fetch restricted to
+same origin only</li>
+<li><code>form-action 'none'</code> — no form submissions can bypass the
+no-storage design</li>
+<li><code>base-uri 'none'</code> — prevents base tag injection</li>
+</ul>
+<p><strong>HSTS:</strong></p>
+<pre><code>Strict-Transport-Security: max-age=31536000; includeSubDomains</code></pre>
+<h4 id="anti-impersonation">Anti-Impersonation</h4>
+<p>The server maintains a <code>Map&lt;WebSocket, string&gt;</code>
+binding each connection to its assigned name. Client payloads contain
+only <code>{ type, text }</code>. The <code>from</code> field is
+injected server-side from this map — the client has no mechanism to
+influence it.</p>
+<h4 id="origin-validation">Origin Validation</h4>
+<p>On every WebSocket upgrade request, the server checks the
+<code>Origin</code> header against an allowlist:</p>
+<ul>
+<li><code>https://trainchat.app</code></li>
+<li><code>http://localhost:3000</code> (development only)</li>
+</ul>
+<p>Connections from disallowed origins are rejected with HTTP 403.</p>
+<p><strong>Scope and limitation:</strong> This prevents cross-site
+WebSocket hijacking from browser contexts — a malicious page at
+<code>evil.com</code> cannot silently connect to TrainChat on behalf of
+a visiting user. It does <strong>not</strong> prevent direct connections
+from non-browser clients (<code>wscat</code>, <code>curl</code>, Python
+scripts), which either omit <code>Origin</code> or set it freely. This
+is accepted: the chat is public to the local network by design, and this
+is disclosed to users.</p>
+<h4 id="input-validation-3-layers">Input Validation (3 layers)</h4>
+<p>See <a href="#message-lifecycle">Message Lifecycle</a> above. Key
+point: <code>maxPayload</code> is set at the
+<code>WebSocket.Server</code> constructor level, enforced before JSON
+parsing. This prevents large-payload attacks from consuming CPU in
+<code>JSON.parse</code>.</p>
+<h4 id="rate-limiting">Rate Limiting</h4>
+<table>
+<thead>
+<tr class="header">
+<th>Limit</th>
+<th>Value</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Messages per second per connection</td>
+<td>5</td>
+<td>Token bucket per socket</td>
+</tr>
+<tr class="even">
+<td>Max connections per IP</td>
+<td>5</td>
+<td>Effective rate = 25 msg/sec per IP</td>
+</tr>
+<tr class="odd">
+<td>Max payload bytes</td>
+<td>1024</td>
+<td>Enforced at ws layer pre-parse</td>
+</tr>
+</tbody>
+</table>
+<p>Excess messages are dropped silently. No error response is sent
+(avoids feedback loops).</p>
+<p><strong>Slow-loris mitigation:</strong> The HTTP server sets
+<code>headersTimeout</code> and <code>requestTimeout</code> to prevent
+attackers from holding WebSocket upgrade connections open indefinitely
+by sending headers byte-by-byte.</p>
+<h4 id="connection-state-management">Connection State Management</h4>
+<p>The sequence for every new connection:</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode js"><code class="sourceCode javascript"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Handlers registered BEFORE socket is added to any map</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;close&#39;</span><span class="op">,</span>     () <span class="kw">=&gt;</span> <span class="fu">cleanup</span>(ws))<span class="op">;</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;error&#39;</span><span class="op">,</span>     () <span class="kw">=&gt;</span> <span class="fu">cleanup</span>(ws))<span class="op">;</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>ws<span class="op">.</span><span class="fu">on</span>(<span class="st">&#39;terminate&#39;</span><span class="op">,</span> () <span class="kw">=&gt;</span> <span class="fu">cleanup</span>(ws))<span class="op">;</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="co">// Only now add to room and identity maps</span></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>identityMap<span class="op">.</span><span class="fu">set</span>(ws<span class="op">,</span> assignedName)<span class="op">;</span></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>rooms<span class="op">.</span><span class="fu">get</span>(roomId)<span class="op">.</span><span class="fu">add</span>(ws)<span class="op">;</span></span></code></pre></div>
+<p><code>cleanup(ws)</code> removes the socket from the room set,
+decrements the per-IP connection counter, deletes the identity map
+entry, and removes the room from the registry if it becomes empty.</p>
+<h4 id="operational-privacy">Operational Privacy</h4>
+<p>Messages are ephemeral at the application level, but the process heap
+holds messages briefly. Mitigations:</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Risk</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Core dump exposes heap</td>
+<td><code>ulimit -c 0</code> in process supervisor config</td>
+</tr>
+<tr class="even">
+<td>Debug logging captures messages</td>
+<td>No <code>console.log</code> of message content anywhere in
+codebase</td>
+</tr>
+<tr class="odd">
+<td>V8 heap snapshot</td>
+<td><code>--inspect</code> flag not set in production startup</td>
+</tr>
+<tr class="even">
+<td>Stale sockets in room map</td>
+<td>Empty rooms deleted immediately on last disconnect</td>
+</tr>
+<tr class="odd">
+<td>Log files from pm2/systemd stdout</td>
+<td>Process supervisor configured to not capture message content</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="known-limitations">Known Limitations</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Limitation</th>
+<th>Impact</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CGNAT: same public IP ≠ same physical location</td>
+<td>Users on mobile carriers or hotel WiFi may share a room with
+geographically distant strangers</td>
+<td>Disclosed in UI; future: opt-in QR room codes</td>
+</tr>
+<tr class="even">
+<td>Non-browser clients can connect</td>
+<td>Scripts and tools can read all room messages</td>
+<td>By design; chat is public to the network; disclosed in UI</td>
+</tr>
+<tr class="odd">
+<td>In-memory relay: messages briefly in server heap</td>
+<td>Crash dump could theoretically expose messages</td>
+<td>Mitigated: core dumps disabled, no message logging</td>
+</tr>
+<tr class="even">
+<td>Single-process server</td>
+<td>Process crash ends all rooms globally</td>
+<td>Mitigated by process supervisor auto-restart; rooms are ephemeral by
+design</td>
+</tr>
+<tr class="odd">
+<td>IP-based room has no sub-grouping</td>
+<td>Large shared networks (airports, universities) put all users in one
+room</td>
+<td>Future: opt-in named rooms or QR codes</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="deployment">Deployment</h2>
+<h3 id="requirements">Requirements</h3>
+<ul>
+<li>Node.js LTS</li>
+<li>Domain with DNS pointing to server</li>
+<li>TLS certificate (Let’s Encrypt / certbot) — required for
+<code>wss://</code></li>
+<li>Any VPS with a public IP ($5/month is sufficient)</li>
+</ul>
+<h3 id="process-supervision">Process Supervision</h3>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode ini"><code class="sourceCode ini"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># systemd example</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="kw">[Service]</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="dt">ExecStart</span><span class="ot">=</span><span class="st">/usr/bin/node /opt/trainchat/src/server.js</span></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="dt">LimitCORE</span><span class="ot">=</span><span class="st">0          # disable core dumps</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="dt">Restart</span><span class="ot">=</span><span class="st">always</span></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="dt">StandardOutput</span><span class="ot">=</span><span class="st">null  # do not capture stdout (prevents message logging)</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="dt">StandardError</span><span class="ot">=</span><span class="st">journal</span></span></code></pre></div>
+<h3 id="reverse-proxy-nginx-with-proxy-protocol">Reverse Proxy (nginx
+with PROXY protocol)</h3>
+<pre class="nginx"><code>stream {
+  upstream trainchat_backend {
+    server 127.0.0.1:3000;
+  }
+  server {
+    listen 443 ssl;
+    ssl_certificate     /etc/letsencrypt/live/trainchat.app/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/trainchat.app/privkey.pem;
+    proxy_pass trainchat_backend;
+    proxy_protocol on;   # passes real client IP at TCP layer
+  }
+}</code></pre>
+<p>The Node.js server reads the real client IP from the PROXY protocol
+header, not from <code>X-Forwarded-For</code>.</p>
+<h3 id="self-hosting-quick-start">Self-Hosting (Quick Start)</h3>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">git</span> clone https://github.com/agent-knopf/trainchat</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> trainchat</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> install</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="ex">npm</span> start</span></code></pre></div>
+<p>For production, configure TLS and a process supervisor as above.</p>
+<hr />
+<h2 id="future-roadmap">Future Roadmap</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>Motivation</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>WebRTC upgrade</td>
+<td>Messages never touch the server (true P2P)</td>
+<td>Server becomes signaling-only; much stronger privacy</td>
+</tr>
+<tr class="even">
+<td>QR-code room codes</td>
+<td>Opt-in sub-grouping, addresses CGNAT</td>
+<td>User scans QR at venue; code is shared secret for room ID</td>
+</tr>
+<tr class="odd">
+<td>File/image sharing</td>
+<td>Common use case on local networks</td>
+<td>WebRTC data channels; P2P preferred</td>
+</tr>
+<tr class="even">
+<td>Emoji reactions</td>
+<td>Low-effort social signal</td>
+<td>Additive to message envelope</td>
+</tr>
+<tr class="odd">
+<td>Mobile-optimised UI</td>
+<td>Most users on phones</td>
+<td>CSS only, no new architecture</td>
+</tr>
+<tr class="even">
+<td>Abuse reporting</td>
+<td>Signal bad actors to room</td>
+<td>Ephemeral flag system; no persistence needed</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>
