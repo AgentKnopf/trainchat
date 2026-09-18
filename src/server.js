@@ -178,8 +178,7 @@ export function createServer() {
     }
     ws.on('close', onClose);
     ws.on('error', onClose);
-    // 'terminate' is not a WebSocket event in ws — ws#terminate() triggers 'close'
-    // Keeping the handler name consistent with spec language regardless
+    ws.on('terminate', onClose);
 
     // Now it's safe to register in maps
     connectionCount.set(ip, count + 1);
