@@ -9,6 +9,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PUBLIC_DIR = join(__dirname, '..', 'public');
 
 const ALLOWED_ORIGINS = new Set([
+  'https://trainchat.fly.dev',
   'https://trainchat.app',
   'http://localhost:3000',
 ]);
@@ -23,7 +24,7 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
-  "connect-src 'self' wss://trainchat.app",
+  "connect-src 'self' wss://trainchat.fly.dev wss://trainchat.app",
   "frame-ancestors 'none'",
   "form-action 'none'",
   "base-uri 'none'",
