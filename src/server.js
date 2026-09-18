@@ -181,7 +181,6 @@ export function createServer() {
     const flyIp = req.headers['fly-client-ip'];
     const ip = flyIp ?? req.socket.remoteAddress ?? 'unknown';
     const room = roomKey(ip);
-    console.log(`[connect] ip=${ip} room=${room} fly-client-ip=${flyIp ?? 'none'} remoteAddress=${req.socket.remoteAddress}`);
 
     // Enforce max 300 connections per room (a full train car on shared WiFi)
     const count = connectionCount.get(room) ?? 0;
