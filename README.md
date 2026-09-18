@@ -28,6 +28,23 @@ npm start
 
 Requires Node.js LTS. For production, set up TLS (Let's Encrypt) — `wss://` is required for browser WebSocket.
 
+## Development
+
+```bash
+git clone https://github.com/AgentKnopf/trainchat
+cd trainchat
+npm install
+npm run dev      # starts server with --watch (auto-restarts on changes)
+```
+
+Open http://localhost:3000 in two tabs to test locally.
+
+## Running Tests
+
+```bash
+npm test
+```
+
 ## Architecture
 
 Single Node.js file. No database. No framework.
