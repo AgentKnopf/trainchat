@@ -1,0 +1,20 @@
+app = "trainchat"
+primary_region = "fra"
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 500
+    soft_limit = 400
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
