@@ -5,7 +5,11 @@ export const ADJECTIVES = [
   'Wandering', 'Xenial', 'Yellow', 'Zesty', 'Arctic', 'Brave', 'Cobalt',
   'Dusty', 'Electric', 'Frozen', 'Golden', 'Hollow', 'Indigo', 'Jolly',
   'Kinetic', 'Lively', 'Mossy', 'Neon', 'Ochre', 'Plum', 'Rusty', 'Sandy',
-  'Turquoise', 'Urban', 'Violet', 'Warm', 'Xeric'
+  'Turquoise', 'Urban', 'Violet', 'Warm', 'Xeric',
+  'Breezy', 'Cloudy', 'Copper', 'Dazzling', 'Emerald', 'Frosty', 'Glowing',
+  'Hazy', 'Icy', 'Lanky', 'Mellow', 'Nimble', 'Onyx', 'Pastel', 'Radiant',
+  'Scarlet', 'Shiny', 'Snowy', 'Stormy', 'Tiny', 'Twilight', 'Velvet',
+  'Wispy', 'Ancient', 'Bitter', 'Clever', 'Fearless', 'Mighty', 'Smooth'
 ];
 
 export const ANIMALS = [
@@ -15,7 +19,12 @@ export const ANIMALS = [
   'Newt', 'Otter', 'Owl', 'Panda', 'Parrot', 'Penguin', 'Pike', 'Puma',
   'Quail', 'Raven', 'Robin', 'Rooster', 'Salamander', 'Seal', 'Shrew',
   'Skunk', 'Sloth', 'Snipe', 'Sparrow', 'Stork', 'Swan', 'Swift', 'Toad',
-  'Vole', 'Weasel', 'Wolf'
+  'Vole', 'Weasel', 'Wolf',
+  'Albatross', 'Bison', 'Capybara', 'Cheetah', 'Dolphin', 'Elk',
+  'Flamingo', 'Gorilla', 'Hamster', 'Hedgehog', 'Jaguar', 'Kangaroo',
+  'Kingfisher', 'Koala', 'Llama', 'Lobster', 'Manatee', 'Narwhal',
+  'Ocelot', 'Peacock', 'Pelican', 'Platypus', 'Quokka', 'Raccoon',
+  'Tapir', 'Walrus', 'Wolverine', 'Yak', 'Axolotl', 'Chameleon'
 ];
 
 export function assignName(takenNames) {
