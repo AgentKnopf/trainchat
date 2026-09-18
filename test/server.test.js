@@ -156,3 +156,26 @@ test('unknown message types are dropped silently', async () => {
   assert.equal(msg.text, 'ok');
   await closeAndWait(ws);
 });
+
+test('301st connection from same IP is refused with code 1008', async () => {
+  // Open 300 connections (the limit), then verify the 301st is rejected.
+  // Use Promise.all to open them in parallel — sequential would be slow.
+  const sockets = await Promise.all(
+    Array.from({ length: 300 }, () => connect())
+  );
+
+  // 301st connection should be refused
+  await new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`, {
+      headers: { origin: 'http://localhost:3000' }
+    });
+    ws.once('close', (code) => {
+      assert.equal(code, 1008);
+      resolve();
+    });
+    ws.once('error', reject);
+  });
+
+  // Clean up all 300 sockets
+  await Promise.all(sockets.map(ws => closeAndWait(ws)));
+});

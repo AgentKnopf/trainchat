@@ -54,7 +54,7 @@ export function createServer() {
   const rooms = new Map();
   // identityMap: Map<WebSocket, { name, roomId }>
   const identityMap = new Map();
-  // connectionCount: Map<ip, number> — enforces max 5 connections per IP
+  // connectionCount: Map<ip, number> — enforces max 300 connections per IP
   const connectionCount = new Map();
 
   const httpServer = createHttpServer((req, res) => {
@@ -157,9 +157,9 @@ export function createServer() {
   wss.on('connection', (ws, req) => {
     const ip = req.socket.remoteAddress ?? 'unknown';
 
-    // Enforce max 5 connections per IP
+    // Enforce max 300 connections per IP (a full train car on shared WiFi)
     const count = connectionCount.get(ip) ?? 0;
-    if (count >= 5) {
+    if (count >= 300) {
       ws.close(1008, 'Too many connections from your network');
       return;
     }
