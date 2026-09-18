@@ -204,3 +204,97 @@ test('joined broadcast to existing peers does not include token', async () => {
   await closeAndWait(ws1);
   await closeAndWait(ws2);
 });
+
+test('valid claim restores name and server broadcasts renamed', async () => {
+  // Connect and capture token
+  const ws1 = await connect();
+  const join1 = await nextMessage(ws1);
+  const originalName = join1.name;
+  const token = join1.token;
+  // Close ws1 to free up the name for claiming
+  await closeAndWait(ws1);
+
+  // Connect a second peer to observe broadcasts
+  const ws2 = await connect();
+  await nextMessage(ws2); // ws2's own join
+
+  // Simulate ws1 reconnect: new connection claiming original name
+  const ws3 = await connect();
+  const tempJoin = await nextMessage(ws3); // temp name assigned
+  const tempName = tempJoin.name;
+
+  // ws2 sees ws3 join under tempName
+  const tempJoinBroadcast = await nextMessage(ws2);
+  assert.equal(tempJoinBroadcast.name, tempName);
+
+  // ws3 sends claim
+  ws3.send(JSON.stringify({ type: 'claim', name: originalName, token }));
+
+  // ws3 gets updated joined with original name
+  const claimResult = await nextMessage(ws3);
+  assert.equal(claimResult.type, 'joined');
+  assert.equal(claimResult.name, originalName);
+  assert.ok(typeof claimResult.token === 'string');
+
+  // ws2 sees renamed broadcast
+  const renamed = await nextMessage(ws2);
+  assert.equal(renamed.type, 'renamed');
+  assert.equal(renamed.from, tempName);
+  assert.equal(renamed.to, originalName);
+
+  await closeAndWait(ws2);
+  await closeAndWait(ws3);
+});
+
+test('claim with wrong token is rejected silently', async () => {
+  const ws1 = await connect();
+  const join1 = await nextMessage(ws1);
+  const originalName = join1.name;
+
+  const ws2 = await connect();
+  const tempJoin = await nextMessage(ws2);
+  const tempName = tempJoin.name;
+
+  // Send claim with wrong token
+  ws2.send(JSON.stringify({ type: 'claim', name: originalName, token: 'deadbeef'.repeat(4) }));
+
+  // No renamed broadcast — send a probe msg to confirm ws2 still has tempName
+  const ws3 = await connect();
+  await nextMessage(ws3);
+
+  const received = nextMessage(ws3);
+  ws2.send(JSON.stringify({ type: 'msg', text: 'probe' }));
+  const probe = await received;
+  assert.equal(probe.from, tempName); // still the temp name
+
+  await closeAndWait(ws1);
+  await closeAndWait(ws2);
+  await closeAndWait(ws3);
+});
+
+test('claim for a name already taken by another connection is rejected', async () => {
+  const ws1 = await connect();
+  const join1 = await nextMessage(ws1);
+  const name1 = join1.name;
+  const token1 = join1.token;
+
+  // ws2 connects, claims ws1's name — but ws1 is still connected so name is taken
+  const ws2 = await connect();
+  const tempJoin = await nextMessage(ws2);
+  const tempName = tempJoin.name;
+
+  ws2.send(JSON.stringify({ type: 'claim', name: name1, token: token1 }));
+
+  // ws2 should still have tempName (claim rejected)
+  const ws3 = await connect();
+  await nextMessage(ws3);
+
+  const received = nextMessage(ws3);
+  ws2.send(JSON.stringify({ type: 'msg', text: 'probe' }));
+  const probe = await received;
+  assert.equal(probe.from, tempName);
+
+  await closeAndWait(ws1);
+  await closeAndWait(ws2);
+  await closeAndWait(ws3);
+});

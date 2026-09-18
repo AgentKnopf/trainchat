@@ -151,13 +151,14 @@ export function createServer() {
    * - Remove from room; delete empty rooms
    * - Broadcast departure to remaining peers
    * - Decrement per-IP connection counter
+   * Note: nameTokens entry is NOT deleted on disconnect so the token can be used for claim()
    */
   function cleanup(ws) {
     const entry = identityMap.get(ws);
     if (!entry) return; // already cleaned up (idempotent)
     const { name, roomId, ip } = entry;
     identityMap.delete(ws);
-    nameTokens.delete(name);
+    // NOTE: do NOT delete nameTokens[name] — it's needed for claim validation
 
     const room = rooms.get(roomId);
     if (room) {
@@ -231,6 +232,41 @@ export function createServer() {
       } catch {
         // Malformed JSON — terminate immediately
         ws.terminate();
+        return;
+      }
+
+      if (msg.type === 'claim') {
+        const { name: claimedName, token: claimedToken } = msg;
+        // Validate format — must match Adjective Animal pattern
+        if (typeof claimedName !== 'string' || !/^[A-Z][a-z]+ [A-Z][a-z]+$/.test(claimedName)) return;
+        if (typeof claimedToken !== 'string' || claimedToken.length !== 32) return;
+        // Token must match what was issued for this name
+        if (nameTokens.get(claimedName) !== claimedToken) return;
+        // Name must be free (original owner must have disconnected)
+        if (getRoomNames(roomId).has(claimedName)) return;
+
+        const entry = identityMap.get(ws);
+        const oldName = entry.name;
+
+        // Delete old token, issue new one for claimed name
+        nameTokens.delete(oldName);
+        const newToken = randomBytes(16).toString('hex');
+        nameTokens.set(claimedName, newToken);
+
+        // Update identity
+        identityMap.set(ws, { ...entry, name: claimedName });
+
+        // Broadcast rename to peers
+        const roomSet = rooms.get(roomId);
+        broadcast(roomId, { type: 'renamed', from: oldName, to: claimedName }, ws);
+
+        // Confirm to claimer with new token
+        ws.send(JSON.stringify({
+          type: 'joined',
+          name: claimedName,
+          token: newToken,
+          roomSize: roomSet?.size ?? 1,
+        }));
         return;
       }
 
