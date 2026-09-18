@@ -156,7 +156,9 @@ export function createServer() {
   }
 
   wss.on('connection', (ws, req) => {
-    const ip = req.socket.remoteAddress ?? 'unknown';
+    // Fly.io sets Fly-Client-IP to the real client IP at their edge.
+    // Fall back to socket.remoteAddress for local/direct deployments.
+    const ip = req.headers['fly-client-ip'] ?? req.socket.remoteAddress ?? 'unknown';
 
     // Enforce max 300 connections per IP (a full train car on shared WiFi)
     const count = connectionCount.get(ip) ?? 0;
