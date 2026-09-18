@@ -170,7 +170,10 @@ export function createServer() {
     // This is intentional: TrainChat is designed for local WiFi proximity.
     const roomId = ip;
 
-    // Register close/error/terminate handlers BEFORE adding to any map,
+    // Register close/error handlers BEFORE adding to any map,
+    // so a race between connection and immediate close never leaks the socket.
+    // Note: ws never emits a 'terminate' event — ws#terminate() triggers 'close',
+    // so the close handler covers that path too.
     // so we never leak a socket reference if the handlers aren't set up.
     function onClose() {
       rateLimiter.destroy();
@@ -178,7 +181,6 @@ export function createServer() {
     }
     ws.on('close', onClose);
     ws.on('error', onClose);
-    ws.on('terminate', onClose);
 
     // Now it's safe to register in maps
     connectionCount.set(ip, count + 1);

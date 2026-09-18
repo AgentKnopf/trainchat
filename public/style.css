@@ -141,3 +141,4 @@ body {
 
 #info a { color: var(--accent); }
 #info summary { cursor: pointer; font-weight: 600; color: var(--text); }
+#info ul { margin-top: 0.5rem; padding-left: 1.2rem; }
