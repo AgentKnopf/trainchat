@@ -1,0 +1,79 @@
+name: Render Architecture Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/ARCHITECTURE.md
+      - docs/architecture.css
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pandoc
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc
+
+      - name: Render ARCHITECTURE.md → HTML
+        run: |
+          pandoc docs/ARCHITECTURE.md \
+            --from markdown \
+            --to html5 \
+            --standalone \
+            --toc \
+            --toc-depth=3 \
+            --css architecture.css \
+            --metadata title="TrainChat — Architecture" \
+            --highlight-style pygments \
+            --output docs/architecture.html
+
+      - name: Commit rendered HTML
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/architecture.html
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: regenerate architecture.html from ARCHITECTURE.md [skip ci]"
+            git push
+          fi
+
+  deploy-pages:
+    needs: render
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pull latest (includes rendered HTML)
+        run: git pull
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload docs/ as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

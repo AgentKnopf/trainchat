@@ -1,0 +1,238 @@
+/*
+ * TrainChat — Architecture Document Stylesheet
+ *
+ * Guiding principles:
+ * 1. Readability first — generous line height, comfortable measure (~70ch)
+ * 2. Hierarchy is visual — headings use size AND weight, not color alone
+ * 3. Code is distinct — monospace blocks are visually separated from prose
+ * 4. Security callouts stand out — blockquotes styled as warning boxes
+ * 5. Navigation is effortless — sticky TOC, anchor links on all headings
+ * 6. No distractions — no decorative color, neutral palette
+ */
+
+/* ── Reset & Base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-bg:         #ffffff;
+  --color-surface:    #f6f8fa;
+  --color-border:     #d1d5db;
+  --color-text:       #1a1a2e;
+  --color-muted:      #6b7280;
+  --color-heading:    #111827;
+  --color-link:       #2563eb;
+  --color-code-bg:    #f3f4f6;
+  --color-code-text:  #1f2937;
+  --color-warn-bg:    #fff7ed;
+  --color-warn-border:#f97316;
+  --color-warn-text:  #7c2d12;
+  --color-sec-bg:     #f0fdf4;
+  --color-sec-border: #16a34a;
+  --color-sec-text:   #14532d;
+  --font-sans:        system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --font-mono:        "JetBrains Mono", "Fira Code", "Cascadia Code", Consolas, monospace;
+  --measure:          72ch;
+  --line-height:      1.75;
+}
+
+html { font-size: 17px; }
+
+body {
+  font-family:   var(--font-sans);
+  background:    var(--color-bg);
+  color:         var(--color-text);
+  line-height:   var(--line-height);
+  padding:       2rem 1.5rem 6rem;
+  max-width:     calc(var(--measure) + 280px);
+  margin:        0 auto;
+}
+
+/* ── Layout — prose + sticky TOC ─────────────────────────────── */
+body > *:not(nav) {
+  max-width: var(--measure);
+}
+
+nav#TOC {
+  position:     fixed;
+  top:          2rem;
+  right:        1.5rem;
+  width:        240px;
+  max-height:   calc(100vh - 4rem);
+  overflow-y:   auto;
+  font-size:    0.78rem;
+  line-height:  1.5;
+  background:   var(--color-surface);
+  border:       1px solid var(--color-border);
+  border-radius: 8px;
+  padding:      1rem;
+}
+
+nav#TOC::before {
+  content:     "Contents";
+  display:     block;
+  font-weight: 700;
+  font-size:   0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color:       var(--color-muted);
+  margin-bottom: 0.6rem;
+}
+
+nav#TOC ul { list-style: none; padding-left: 0.75rem; }
+nav#TOC > ul { padding-left: 0; }
+nav#TOC li { margin: 0.2rem 0; }
+nav#TOC a { color: var(--color-muted); text-decoration: none; }
+nav#TOC a:hover { color: var(--color-link); }
+
+@media (max-width: 900px) {
+  nav#TOC { display: none; }
+  body > *:not(nav) { max-width: 100%; }
+}
+
+/* ── Typography ───────────────────────────────────────────────── */
+h1, h2, h3, h4 {
+  color:        var(--color-heading);
+  line-height:  1.25;
+  margin-top:   2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+h1 { font-size: 2rem;   font-weight: 800; margin-top: 0; }
+h2 { font-size: 1.4rem; font-weight: 700; padding-bottom: 0.3rem; border-bottom: 2px solid var(--color-border); }
+h3 { font-size: 1.1rem; font-weight: 700; }
+h4 { font-size: 1rem;   font-weight: 600; color: var(--color-muted); }
+
+/* Anchor links on headings */
+h2::before, h3::before { content: ""; }
+h2:hover::after, h3:hover::after {
+  content:     " #";
+  color:       var(--color-muted);
+  font-weight: 400;
+  font-size:   0.85em;
+}
+
+p { margin-bottom: 1rem; }
+
+a { color: var(--color-link); }
+a:hover { text-decoration: underline; }
+
+strong { font-weight: 700; }
+em     { font-style: italic; }
+
+/* ── Lists ────────────────────────────────────────────────────── */
+ul, ol {
+  padding-left:  1.5rem;
+  margin-bottom: 1rem;
+}
+li { margin-bottom: 0.3rem; }
+li > ul, li > ol { margin-top: 0.3rem; margin-bottom: 0; }
+
+/* ── Code ─────────────────────────────────────────────────────── */
+code {
+  font-family:    var(--font-mono);
+  font-size:      0.85em;
+  background:     var(--color-code-bg);
+  color:          var(--color-code-text);
+  padding:        0.15em 0.4em;
+  border-radius:  4px;
+  border:         1px solid var(--color-border);
+}
+
+pre {
+  background:    var(--color-code-bg);
+  border:        1px solid var(--color-border);
+  border-radius: 8px;
+  padding:       1.25rem 1.5rem;
+  overflow-x:    auto;
+  margin-bottom: 1.5rem;
+  line-height:   1.5;
+}
+
+pre code {
+  background: transparent;
+  border:     none;
+  padding:    0;
+  font-size:  0.83rem;
+}
+
+/* ── Tables ───────────────────────────────────────────────────── */
+table {
+  width:         100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size:     0.9rem;
+}
+
+th {
+  background:    var(--color-surface);
+  font-weight:   700;
+  text-align:    left;
+  padding:       0.6rem 1rem;
+  border:        1px solid var(--color-border);
+}
+
+td {
+  padding:       0.5rem 1rem;
+  border:        1px solid var(--color-border);
+  vertical-align: top;
+}
+
+tr:nth-child(even) td { background: var(--color-surface); }
+
+/* ── Blockquotes — Security Callouts ─────────────────────────── */
+/*
+ * Guiding principle: security-relevant sections must be immediately
+ * recognisable. Blockquotes in ARCHITECTURE.md are used exclusively
+ * for security notes and warnings — they render as orange callout boxes.
+ */
+blockquote {
+  background:   var(--color-warn-bg);
+  border-left:  4px solid var(--color-warn-border);
+  color:        var(--color-warn-text);
+  border-radius: 0 6px 6px 0;
+  padding:      1rem 1.25rem;
+  margin:       1.5rem 0;
+  font-size:    0.93rem;
+}
+
+blockquote::before {
+  content:      "⚠ Security note";
+  display:      block;
+  font-weight:  700;
+  font-size:    0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.4rem;
+  color:        var(--color-warn-border);
+}
+
+blockquote p { margin-bottom: 0.4rem; }
+blockquote p:last-child { margin-bottom: 0; }
+
+/* ── Horizontal Rules ─────────────────────────────────────────── */
+hr {
+  border:        none;
+  border-top:    1px solid var(--color-border);
+  margin:        2.5rem 0;
+}
+
+/* ── Header / Title block ─────────────────────────────────────── */
+header {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--color-border);
+}
+
+header p.author, header p.date {
+  color:     var(--color-muted);
+  font-size: 0.9rem;
+  margin:    0.1rem 0;
+}
+
+/* ── Print ────────────────────────────────────────────────────── */
+@media print {
+  nav#TOC    { display: none; }
+  body       { max-width: 100%; padding: 0; font-size: 12pt; }
+  a          { color: inherit; text-decoration: none; }
+  pre, table { page-break-inside: avoid; }
+}
