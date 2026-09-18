@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TrainChat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="header">
+    <h1>TrainChat</h1>
+    <div id="status">
+      <div>You are: <span id="my-name">connecting…</span></div>
+      <div id="room-size"></div>
+    </div>
+  </div>
+
+  <details id="info">
+    <summary>How TrainChat works</summary>
+    <ul style="margin-top:0.5rem; padding-left:1.2rem;">
+      <li>Your messages reach everyone on the same WiFi network</li>
+      <li>"Same network" means same public IP — includes hotel/carrier NAT</li>
+      <li>Nothing is stored — messages exist only in connected browser tabs</li>
+      <li>Anyone on this network can connect, including via scripts</li>
+      <li>Closing this tab ends your session permanently</li>
+      <li><a href="https://github.com/AgentKnopf/trainchat" target="_blank" rel="noopener">View source on GitHub</a></li>
+    </ul>
+  </details>
+
+  <div id="messages"></div>
+
+  <div id="input-row">
+    <input id="msg-input" type="text" placeholder="Say something…" maxlength="500" autocomplete="off" disabled>
+    <button id="send-btn" disabled>Send</button>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
