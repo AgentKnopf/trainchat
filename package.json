@@ -1,0 +1,16 @@
+{
+  "name": "trainchat",
+  "version": "0.1.0",
+  "description": "Zero-install ephemeral chat for people on the same WiFi network",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/**/*.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.21.3"
+  }
+}
