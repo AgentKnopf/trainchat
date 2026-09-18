@@ -179,3 +179,28 @@ test('301st connection from same IP is refused with code 1008', async () => {
   // Clean up all 300 sockets
   await Promise.all(sockets.map(ws => closeAndWait(ws)));
 });
+
+test('joined confirmation includes a token', async () => {
+  const ws = await connect();
+  const msg = await nextMessage(ws);
+  assert.equal(msg.type, 'joined');
+  assert.ok(typeof msg.token === 'string');
+  assert.match(msg.token, /^[0-9a-f]{32}$/);
+  await closeAndWait(ws);
+});
+
+test('joined broadcast to existing peers does not include token', async () => {
+  const ws1 = await connect();
+  await nextMessage(ws1); // consume ws1's own join
+
+  const ws2 = await connect();
+  await nextMessage(ws2); // ws2's own join (has token)
+
+  // ws1 receives the peer-joined broadcast — must NOT have token
+  const peerJoin = await nextMessage(ws1);
+  assert.equal(peerJoin.type, 'joined');
+  assert.equal(peerJoin.token, undefined);
+
+  await closeAndWait(ws1);
+  await closeAndWait(ws2);
+});

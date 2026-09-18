@@ -2,6 +2,7 @@ import { createServer as createHttpServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 import { WebSocket, WebSocketServer } from 'ws';
 import { assignName } from './names.js';
 
@@ -71,6 +72,9 @@ export function createServer() {
   const identityMap = new Map();
   // connectionCount: Map<ip, number> — enforces max 300 connections per IP
   const connectionCount = new Map();
+  // nameTokens: Map<name, token> — proves ownership for claim validation.
+  // Entry created on join, deleted on cleanup.
+  const nameTokens = new Map();
 
   const httpServer = createHttpServer((req, res) => {
     // Path traversal guard: reject any path containing '..'
@@ -153,6 +157,7 @@ export function createServer() {
     if (!entry) return; // already cleaned up (idempotent)
     const { name, roomId, ip } = entry;
     identityMap.delete(ws);
+    nameTokens.delete(name);
 
     const room = rooms.get(roomId);
     if (room) {
@@ -209,13 +214,15 @@ export function createServer() {
 
     const name = assignName(getRoomNames(roomId));
     identityMap.set(ws, { name, roomId, ip });
+    const token = randomBytes(16).toString('hex');
+    nameTokens.set(name, token);
     roomSet.add(ws);
 
     // Notify existing peers that someone joined
     broadcast(roomId, { type: 'joined', name, roomSize: roomSet.size }, ws);
 
-    // Send join confirmation to the new peer (their own name + current room size)
-    ws.send(JSON.stringify({ type: 'joined', name, roomSize: roomSet.size }));
+    // Send join confirmation to the new peer (their own name + token + current room size)
+    ws.send(JSON.stringify({ type: 'joined', name, token, roomSize: roomSet.size }));
 
     ws.on('message', (data) => {
       let msg;
