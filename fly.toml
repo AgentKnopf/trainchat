@@ -2,6 +2,7 @@ app = "trainchat"
 primary_region = "fra"
 
 [build]
+  dockerfile = "Dockerfile"
 
 [http_service]
   internal_port = 3000
