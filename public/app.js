@@ -168,3 +168,62 @@ sendBtn.addEventListener('click', sendMessage);
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
+
+// --- Theme ---------------------------------------------------------------
+// The initial theme is resolved by the inline script in <head> so the first
+// paint is already correct. This only handles switching afterwards.
+
+const THEME_KEY = 'trainchat-theme';
+const themeBtn  = document.getElementById('theme-btn');
+const iconMoon  = document.getElementById('icon-moon');
+const iconSun   = document.getElementById('icon-sun');
+const lightQuery = matchMedia('(prefers-color-scheme: light)');
+
+function storedTheme() {
+  let t;
+  try { t = sessionStorage.getItem(THEME_KEY); } catch { return null; }
+  return t === 'light' || t === 'dark' ? t : null;
+}
+
+// `hidden` is an HTMLElement IDL property — assigning el.hidden on an SVG
+// element sets a meaningless JS expando and never touches the DOM. SVG icons
+// have to be toggled via the attribute itself.
+function setHidden(el, hide) {
+  if (hide) el.setAttribute('hidden', '');
+  else el.removeAttribute('hidden');
+}
+
+function applyTheme(theme) {
+  const dark = theme === 'dark';
+  document.documentElement.dataset.theme = theme;
+  // Show the icon for the mode the button switches *to*: a sun while we're
+  // dark (tap for light), a moon while we're light (tap for dark).
+  setHidden(iconSun, !dark);
+  setHidden(iconMoon, dark);
+  themeBtn.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+}
+
+applyTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+
+themeBtn.addEventListener('click', () => {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { sessionStorage.setItem(THEME_KEY, next); } catch { /* storage blocked — theme still applies for this page */ }
+});
+
+// Follow the OS only while the user hasn't made an explicit choice.
+lightQuery.addEventListener('change', (e) => {
+  if (!storedTheme()) applyTheme(e.matches ? 'light' : 'dark');
+});
+
+// --- Info dialog ---------------------------------------------------------
+
+const infoDialog = document.getElementById('info-dialog');
+document.getElementById('info-btn').addEventListener('click', () => infoDialog.showModal());
+document.getElementById('info-close').addEventListener('click', () => infoDialog.close());
+
+// Click outside the sheet closes it. The dialog element itself fills the
+// backdrop area, so a click landing on it (not on #info-body) is an outside click.
+infoDialog.addEventListener('click', (e) => {
+  if (e.target === infoDialog) infoDialog.close();
+});
