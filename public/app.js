@@ -11,13 +11,13 @@ let pendingClaim = false;
 const HISTORY_KEY = 'trainchat-messages';
 const HISTORY_MAX = 300;
 
-function storeMessage(from, text, ts) {
+function storeMessage(from, text, ts, isMe) {
   let history;
   try {
     history = JSON.parse(sessionStorage.getItem(HISTORY_KEY) ?? '[]');
     if (!Array.isArray(history)) history = [];
   } catch { history = []; }
-  history.push({ from, text, ts });
+  history.push({ from, text, ts, isMe: !!isMe });
   if (history.length > HISTORY_MAX) history = history.slice(-HISTORY_MAX);
   try { sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch { /* storage full — skip */ }
 }
@@ -36,11 +36,25 @@ function replayHistory() {
 
   for (const entry of history) {
     if (typeof entry.from === 'string' && typeof entry.text === 'string') {
-      addMessage(entry.from, entry.text, entry.from === myName);
+      addMessage(entry.from, entry.text, !!entry.isMe);
     }
   }
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
+
+function reattributeHistory(confirmedName) {
+  const bubbles = messagesEl.querySelectorAll('.msg');
+  for (const bubble of bubbles) {
+    const senderEl = bubble.querySelector('.sender');
+    if (!senderEl) continue;
+    if (senderEl.textContent === confirmedName) {
+      bubble.classList.add('mine');
+    } else {
+      bubble.classList.remove('mine');
+    }
+  }
+}
+
 
 const proto = location.protocol === 'https:' ? 'wss' : 'ws';
 const ws = new WebSocket(`${proto}://${location.host}`);
@@ -91,7 +105,7 @@ ws.addEventListener('message', (event) => {
     myName = msg.name;
     myNameEl.textContent = msg.name;
     updateRoomSize(msg.roomSize);
-    replayHistory();
+    reattributeHistory(msg.name);
     addSystem(`You rejoined as ${msg.name}`);
     sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
     return;
@@ -116,8 +130,9 @@ ws.addEventListener('message', (event) => {
   }
 
   if (msg.type === 'msg') {
-    storeMessage(msg.from, msg.text, msg.ts);
-    addMessage(msg.from, msg.text, msg.from === myName);
+    const isMe = msg.from === myName;
+    storeMessage(msg.from, msg.text, msg.ts, isMe);
+    addMessage(msg.from, msg.text, isMe);
   }
 });
 
