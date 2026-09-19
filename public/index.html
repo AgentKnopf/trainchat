@@ -18,11 +18,11 @@
   <details id="info">
     <summary>How TrainChat works</summary>
     <ul>
-      <li>Your messages reach everyone on the same WiFi network</li>
-      <li>"Same network" means same public IP — includes hotel/carrier NAT</li>
-      <li>Nothing is stored — messages exist only in connected browser tabs</li>
-      <li>Anyone on this network can connect, including via scripts</li>
-      <li>Closing this tab ends your session permanently</li>
+      <li>Your messages reach everyone on the same WiFi — grouped by network prefix, not device</li>
+      <li>You get a random name; it stays the same if you refresh within this tab</li>
+      <li>The last 300 messages are kept in this tab only — closing the tab clears them</li>
+      <li>The server assigns rooms by IP but logs nothing — no IPs, names, or messages are stored server-side</li>
+      <li>Anyone on this network can read and send messages, including automated scripts</li>
       <li><a href="https://github.com/AgentKnopf/trainchat" target="_blank" rel="noopener noreferrer">View source on GitHub</a></li>
     </ul>
   </details>
