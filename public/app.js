@@ -75,8 +75,8 @@ ws.addEventListener('message', (event) => {
     myNameEl.textContent = msg.name;
     updateRoomSize(msg.roomSize);
     setEnabled(true);
+    replayHistory();
     if (!pendingClaim) {
-      replayHistory();
       addSystem(`You joined as ${msg.name}`);
       if (msg.token) {
         sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
