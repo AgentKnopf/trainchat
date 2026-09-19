@@ -1,4 +1,6 @@
 // All DOM insertion uses textContent — never innerHTML
+import { buildHistoryAttribution } from './history.js';
+
 const messagesEl = document.getElementById('messages');
 const myNameEl   = document.getElementById('my-name');
 const roomSizeEl = document.getElementById('room-size');
@@ -34,10 +36,8 @@ function replayHistory() {
   sep.textContent = '— earlier messages —';
   messagesEl.appendChild(sep);
 
-  for (const entry of history) {
-    if (typeof entry.from === 'string' && typeof entry.text === 'string') {
-      addMessage(entry.from, entry.text, !!entry.isMe);
-    }
+  for (const entry of buildHistoryAttribution(history, null)) {
+    addMessage(entry.from, entry.text, entry.isMe);
   }
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
