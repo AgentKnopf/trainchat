@@ -6,6 +6,7 @@ const input      = document.getElementById('msg-input');
 const sendBtn    = document.getElementById('send-btn');
 
 let myName = null;
+let pendingClaim = false;
 
 const HISTORY_KEY = 'trainchat-messages';
 const HISTORY_MAX = 300;
@@ -49,6 +50,7 @@ ws.addEventListener('open', () => {
   try {
     const saved = JSON.parse(sessionStorage.getItem('trainchat-name') ?? 'null');
     if (saved?.name && saved?.token) {
+      pendingClaim = true;
       ws.send(JSON.stringify({ type: 'claim', name: saved.name, token: saved.token }));
     }
   } catch { /* corrupt sessionStorage — ignore */ }
@@ -73,16 +75,19 @@ ws.addEventListener('message', (event) => {
     myNameEl.textContent = msg.name;
     updateRoomSize(msg.roomSize);
     setEnabled(true);
-    replayHistory();
-    addSystem(`You joined as ${msg.name}`);
-    if (msg.token) {
-      sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
+    if (!pendingClaim) {
+      replayHistory();
+      addSystem(`You joined as ${msg.name}`);
+      if (msg.token) {
+        sessionStorage.setItem('trainchat-name', JSON.stringify({ name: msg.name, token: msg.token }));
+      }
     }
     return;
   }
 
   if (msg.type === 'joined' && myName && msg.token) {
     // Claim succeeded — server confirmed our name with a fresh token
+    pendingClaim = false;
     myName = msg.name;
     myNameEl.textContent = msg.name;
     updateRoomSize(msg.roomSize);
