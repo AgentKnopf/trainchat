@@ -180,6 +180,29 @@ test('301st connection from same IP is refused with code 1008', async () => {
   await Promise.all(sockets.map(ws => closeAndWait(ws)));
 });
 
+test('IPv6 /64 room counter decrements correctly — sequential connect/disconnect does not lock out', async () => {
+  // Each iteration uses a distinct host in the same /64 prefix, connects, then disconnects.
+  // After 305 cycles the room counter must be at most 1 (current connection), not 305.
+  // Without the fix, the counter only increments, hits 300, and rejects further connections.
+  function connectWithIp(ip) {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}`, {
+        headers: { origin: 'http://localhost:3000', 'fly-client-ip': ip },
+      });
+      ws.once('open', () => resolve(ws));
+      ws.once('close', (code) => resolve({ closed: code }));
+      ws.once('error', reject);
+    });
+  }
+
+  for (let i = 0; i < 305; i++) {
+    const ip = `2001:db8:1:2::${(i + 1).toString(16)}`;
+    const ws = await connectWithIp(ip);
+    assert.ok(!ws.closed, `connection ${i + 1} should not be refused (got close code ${ws.closed})`);
+    await closeAndWait(ws);
+  }
+});
+
 test('joined confirmation includes a token', async () => {
   const ws = await connect();
   const msg = await nextMessage(ws);

@@ -70,7 +70,7 @@ export function createServer() {
   const rooms = new Map();
   // identityMap: Map<WebSocket, { name, roomId }>
   const identityMap = new Map();
-  // connectionCount: Map<ip, number> — enforces max 300 connections per IP
+  // connectionCount: Map<roomId, number> — enforces max 300 connections per room
   const connectionCount = new Map();
   // nameTokens: Map<name, token> — proves ownership for claim validation.
   // Entry created on join, deleted on cleanup.
@@ -170,9 +170,9 @@ export function createServer() {
       }
     }
 
-    const count = (connectionCount.get(ip) ?? 1) - 1;
-    if (count <= 0) connectionCount.delete(ip);
-    else connectionCount.set(ip, count);
+    const count = (connectionCount.get(roomId) ?? 1) - 1;
+    if (count <= 0) connectionCount.delete(roomId);
+    else connectionCount.set(roomId, count);
   }
 
   wss.on('connection', (ws, req) => {
